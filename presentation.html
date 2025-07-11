@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ titulo }}</title>
+  <style>
+    body {
+      background-color: #111;
+      color: white;
+      font-family: monospace;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1, h3 {
+      text-align: center;
+      margin: 5px 0;
+    }
+
+    #controle {
+      margin: 20px 0;
+    }
+
+    input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      border-radius: 5px;
+      border: none;
+      margin-left: 10px;
+      background: #222;
+      color: #fff;
+    }
+
+    button {
+      margin-left: 10px;
+      padding: 6px 12px;
+      border-radius: 5px;
+      border: none;
+      background-color: orange;
+      color: #111;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #letra {
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .linha {
+      margin-bottom: 12px;
+      white-space: pre;
+      text-align: center;
+      font-size: 20px;
+      line-height: 0.5;
+    }
+
+    .cifra {
+      color: orange;
+    }
+  </style>
+</head>
+<body>
+  <h1>{{ titulo }}</h1>
+  <h3>Autor: {{ autor }}</h3>
+
+  <div id="controle">
+    <label for="velocidadeInput">Velocidade (s por linha):</label>
+    <input type="number" id="velocidadeInput" value="15" step="0.1" min="0.1">
+    <button onclick="iniciarRolagem()">▶ Iniciar</button>
+  </div>
+
+  <div id="letra">
+    {% for l in linhas %}
+      <div class="linha">
+        <div class="cifra">{{ l.cifra }}</div>
+        <div>{{ l.letra }}</div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <script>
+    let scrollInterval;
+    let isScrolling = false;
+
+    function iniciarRolagem() {
+      if (isScrolling) return;
+
+      const velocidade = parseFloat(document.getElementById("velocidadeInput").value) || 1;
+      const pixelsPorSegundo = 10 / velocidade;
+
+      isScrolling = true;
+
+      function rolar() {
+        window.scrollBy(0, pixelsPorSegundo);
+        scrollInterval = requestAnimationFrame(rolar);
+      }
+
+      rolar();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        cancelAnimationFrame(scrollInterval);
+        isScrolling = false;
+      }
+    });
+  </script>
+</body>
+</html>

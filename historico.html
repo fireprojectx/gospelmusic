@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Histórico de Cifras</title>
+  <style>
+    body {
+      background-color: #111;
+      color: white;
+      font-family: sans-serif;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    section {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      margin-bottom: 12px;
+      padding: 16px;
+      background-color: #1e1e1e;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      transition: background-color 0.3s ease;
+    }
+
+    li:hover {
+      background-color: #2a2a2a;
+    }
+
+    a {
+      color: orange;
+      text-decoration: none;
+      font-size: 18px;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    small {
+      display: block;
+      margin-top: 6px;
+      color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Cifras</h1>
+
+  <div style="margin-bottom: 20px;">
+  <a href="https://web-production-34818.up.railway.app/" target="_blank">
+    <button style="
+      padding: 10px 20px;
+      background-color: orange;
+      color: #111;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    ">
+      Enviar Cifra
+    </button>
+  </a>
+</div>
+
+  <section>
+    <ul>
+      {% for id, titulo, autor in cifras %}
+        <li>
+          <a href="/cifra/titulo/{{ titulo | urlencode }}">{{ titulo }}</a>
+          <small>Autor: {{ autor }}</small>
+        </li>
+      {% else %}
+        <li>Nenhuma cifra cadastrada.</li>
+      {% endfor %}
+    </ul>
+  </section>
+</body>
+</html>

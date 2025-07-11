@@ -1,0 +1,18 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: #f8f8f8;
+  text-align: center;
+  padding: 2rem;
+}
+#letra {
+  margin-top: 3rem;
+  max-width: 500px; /* define a largura máxima */
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left; /* ou center, se preferir */
+}
+p {
+  font-size: 1.5rem;
+  margin: 1.5rem 0;
+}
