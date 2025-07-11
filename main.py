@@ -13,6 +13,12 @@ from db import (
     buscar_cifra_por_titulo,
 )
 
+if __name__ == "__main__":
+    import uvicorn
+    import os
+    port = int(os.getenv("PORT", 8000))  # Pega PORT do ambiente ou usa 8000
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
+
 # Inicialização da aplicação
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")

@@ -1,6 +1,8 @@
 from openai import OpenAI, APIError, APIConnectionError, RateLimitError
 import os
 import json
+from dotenv import load_dotenv
+load_dotenv()
 
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
