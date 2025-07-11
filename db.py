@@ -84,8 +84,6 @@ def buscar_cifra_por_id(id):
         return None
 
 
-
-
 def criar_tabelas_usuario_e_musica():
     try:
         with get_connection() as conn:
@@ -115,3 +113,26 @@ def criar_tabelas_usuario_e_musica():
         print("✅ Tabelas 'usuarios' e 'musicas' criadas/verificadas com sucesso.")
     except Exception as e:
         print("❌ Erro ao criar/verificar tabelas de usuário e música:", e)
+
+def verificar_login(email: str, senha_hash: str):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id FROM usuarios WHERE email = %s AND senha_hash = %s", (email, senha_hash))
+                return cur.fetchone()
+    except Exception as e:
+        print("❌ Erro ao verificar login:", e)
+        return None
+
+def criar_usuario(email: str, senha_hash: str):
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO usuarios (email, senha_hash) VALUES (%s, %s)",
+                    (email, senha_hash)
+                )
+                conn.commit()
+                print("✅ Usuário criado com sucesso.")
+    except Exception as e:
+        print("❌ Erro ao criar usuário:", e)

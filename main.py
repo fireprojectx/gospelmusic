@@ -1,73 +1,62 @@
-from fastapi import FastAPI, UploadFile, Request, Path
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, UploadFile, Request, Path, Form
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.sessions import SessionMiddleware
 import fitz  # PyMuPDF
 
 from openai_chat import formatar_com_gpt
 from db import (
     criar_tabela_se_nao_existir,
+    criar_tabelas_usuario_e_musica,
     salvar_cifra,
     listar_cifras,
     buscar_cifra_por_id,
     buscar_cifra_por_titulo,
+    verificar_login
 )
 
-if __name__ == "__main__":
-    import uvicorn
-    import os
-    port = int(os.getenv("PORT", 8000))  # Pega PORT do ambiente ou usa 8000
-    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=True)
-
-# Inicialização da aplicação
+# Inicialização
 app = FastAPI()
+app.add_middleware(SessionMiddleware, secret_key="uma_chave_muito_secreta")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# Criação de tabela no início da aplicação
+# Criação das tabelas
 criar_tabela_se_nao_existir()
+criar_tabelas_usuario_e_musica()
 
+# Utilitário de sessão
+def usuario_logado(request: Request):
+    return "usuario_id" in request.session
 
-# -----------------------------------------
-# Rota principal de upload
-# -----------------------------------------
+# Redirecionar raiz para login
 @app.get("/", response_class=HTMLResponse)
-def form(request: Request):
-    return templates.TemplateResponse("form.html", {"request": request})
+def root():
+    return RedirectResponse("/login", status_code=302)
 
-@app.post("/upload", response_class=HTMLResponse)
-async def upload(request: Request, file: UploadFile):
-    conteudo_pdf = await file.read()
-    texto_extraido = extrair_texto_pdf(conteudo_pdf)
+# Tela de login
+@app.get("/login", response_class=HTMLResponse)
+def login_form(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
-    # Opcional: log para debug
-    print("🎵 Texto extraído do PDF:\n", texto_extraido)
+@app.post("/login")
+async def login(request: Request, email: str = Form(...), senha: str = Form(...)):
+    usuario = verificar_login(email, senha)
+    if usuario:
+        request.session["usuario_id"] = usuario[0]
+        return RedirectResponse("/historico", status_code=302)
+    return HTMLResponse("Login inválido", status_code=401)
 
-    resposta = formatar_com_gpt(texto_extraido)
+@app.get("/logout")
+def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse("/login", status_code=302)
 
-    titulo = resposta.get("titulo", "Sem título")
-    autor = resposta.get("autor", "Desconhecido")
-    cifra = resposta.get("cifra", "")
-
-    # Salvar no banco de dados
-    salvar_cifra(titulo, autor, cifra)
-
-    # Processar cifra em linhas (cifra e letra)
-    linhas = separar_cifras_letra(cifra)
-
-    return templates.TemplateResponse("presentation.html", {
-        "request": request,
-        "titulo": titulo,
-        "autor": autor,
-        "linhas": linhas
-    })
-
-
-# -----------------------------------------
-# Rota de histórico
-# -----------------------------------------
 @app.get("/historico", response_class=HTMLResponse)
 def historico(request: Request):
+    if not usuario_logado(request):
+        return RedirectResponse("/login", status_code=302)
     cifras = listar_cifras()
     cifras_ordenadas = sorted(cifras, key=lambda x: x[1].lower())
     return templates.TemplateResponse("historico.html", {
@@ -75,57 +64,62 @@ def historico(request: Request):
         "cifras": cifras_ordenadas
     })
 
-
-# -----------------------------------------
-# Visualizar cifra por ID
-# -----------------------------------------
-@app.get("/cifra/{id}", response_class=HTMLResponse)
-def ver_cifra(request: Request, id: int = Path(...)):
-    resultado = buscar_cifra_por_id(id)
-    if not resultado:
-        return HTMLResponse(content="Cifra não encontrada", status_code=404)
-
-    _, titulo, autor, cifra = resultado
+@app.post("/upload", response_class=HTMLResponse)
+async def upload(request: Request, file: UploadFile):
+    if not usuario_logado(request):
+        return RedirectResponse("/login", status_code=302)
+    conteudo_pdf = await file.read()
+    texto_extraido = extrair_texto_pdf(conteudo_pdf)
+    resposta = formatar_com_gpt(texto_extraido)
+    titulo = resposta.get("titulo", "Sem título")
+    autor = resposta.get("autor", "Desconhecido")
+    cifra = resposta.get("cifra", "")
+    salvar_cifra(titulo, autor, cifra)
     linhas = separar_cifras_letra(cifra)
-
     return templates.TemplateResponse("presentation.html", {
         "request": request,
         "titulo": titulo,
         "autor": autor,
-        "linhas": linhas  # ⚠️ ESSA É A VARIÁVEL USADA NO HTML
+        "linhas": linhas
     })
 
+@app.get("/cifra/{id}", response_class=HTMLResponse)
+def ver_cifra(request: Request, id: int = Path(...)):
+    if not usuario_logado(request):
+        return RedirectResponse("/login", status_code=302)
+    resultado = buscar_cifra_por_id(id)
+    if not resultado:
+        return HTMLResponse(content="Cifra não encontrada", status_code=404)
+    _, titulo, autor, cifra = resultado
+    linhas = separar_cifras_letra(cifra)
+    return templates.TemplateResponse("presentation.html", {
+        "request": request,
+        "titulo": titulo,
+        "autor": autor,
+        "linhas": linhas
+    })
 
-# -----------------------------------------
-# Visualizar cifra por título
-# -----------------------------------------
 @app.get("/cifra/titulo/{titulo}", response_class=HTMLResponse)
 def exibir_cifra_por_titulo(request: Request, titulo: str = Path(...)):
+    if not usuario_logado(request):
+        return RedirectResponse("/login", status_code=302)
     cifra = buscar_cifra_por_titulo(titulo)
-
     if cifra is None:
         return HTMLResponse(content="Cifra não encontrada", status_code=404)
-
-    # ✅ Processar cifra em linhas para exibição
     linhas = separar_cifras_letra(cifra["cifra"])
-
     return templates.TemplateResponse("presentation.html", {
         "request": request,
         "titulo": cifra["titulo"],
         "autor": cifra["autor"],
-        "linhas": linhas  # <- a chave que o template espera
+        "linhas": linhas
     })
 
-
-
-# -----------------------------------------
 # Utilitários
-# -----------------------------------------
+
 def extrair_texto_pdf(pdf_bytes):
     with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
         texto = "\n".join(page.get_text() for page in doc)
     return texto
-
 
 def separar_cifras_letra(cifra: str):
     linhas_processadas = []
@@ -151,4 +145,3 @@ def separar_cifras_letra(cifra: str):
                 i += 1
         linhas_processadas.append({"cifra": cifra_linha, "letra": letra_linha})
     return linhas_processadas
-
